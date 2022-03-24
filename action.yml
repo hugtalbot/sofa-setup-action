@@ -260,6 +260,7 @@ runs:
         fi
 
     - name: Setup cache for Qt files
+      if: inputs.sofa_scope != 'minimal'
       uses: actions/cache@v2
       id: qt_cache
       with:
@@ -267,6 +268,7 @@ runs:
         key: qt-${{ env.QT_VERSION }}_${{ runner.os }}_for-SOFA-${{ inputs.sofa_version }}_${{ hashFiles('**/*.yml') }}
         
     - name: Install Qt
+      if: inputs.sofa_scope != 'minimal'
       shell: bash
       run: |
         if [[ "$RUNNER_OS" == "Linux" ]]; then
