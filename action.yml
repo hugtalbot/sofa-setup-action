@@ -17,7 +17,7 @@ inputs:
   python_version:
     description: 'Python version to install'
     required: true
-    default: '3.9'
+    default: '3.8'
   workspace_auto_setup:
     description: 'Should this action setup your workspace tree?'
     required: false
@@ -131,6 +131,8 @@ runs:
         echo "CCACHE_DIR=$GITHUB_WORKSPACE/.ccache" | tee -a $GITHUB_ENV
         
         # TODO: find a better way to handle dependency versions
+        QT_VERSION="5.12.6"
+        QT_INSTALL_DIR="$HOME/Qt"
         EIGEN_INSTALL_DIR="/tmp/deps_cache_is_for_windows_only"
         BOOST_INSTALL_DIR="/tmp/deps_cache_is_for_windows_only"
         SUDO='sudo'
@@ -153,6 +155,8 @@ runs:
         fi
         
         echo "SUDO=$SUDO" | tee -a $GITHUB_ENV
+        echo "QT_VERSION=$QT_VERSION" | tee -a $GITHUB_ENV
+        echo "QT_INSTALL_DIR=$QT_INSTALL_DIR" | tee -a $GITHUB_ENV
         echo "EIGEN_VERSION=$EIGEN_VERSION" | tee -a $GITHUB_ENV
         echo "EIGEN_INSTALL_DIR=$EIGEN_INSTALL_DIR" | tee -a $GITHUB_ENV
         echo "BOOST_VERSION=$BOOST_VERSION" | tee -a $GITHUB_ENV
@@ -226,6 +230,30 @@ runs:
         elif [[ "$RUNNER_OS" == "Windows" ]]; then
           cmd //c 'choco install -y --no-progress nsis curl ninja'
         fi
+
+    - name: Setup cache for Qt files
+      uses: actions/cache@v2
+      id: qt_cache
+      with:
+        path: ${{ env.QT_INSTALL_DIR }}
+        key: qt-${{ env.QT_VERSION }}_${{ runner.os }}_for-SOFA-${{ inputs.sofa_version }}_${{ hashFiles('**/*.yml') }}
+        
+    - name: Install Qt
+      shell: bash
+      run: |
+        if [[ "$RUNNER_OS" == "Linux" ]]; then
+          qt_os="linux"
+          qt_compiler="gcc_64"
+        elif [[ "$RUNNER_OS" == "macOS" ]]; then
+          qt_os="mac"
+          qt_compiler="clang_64"
+        elif [[ "$RUNNER_OS" == "Windows" ]]; then
+          qt_os="windows"
+          qt_compiler="win64_msvc2017_64"
+        fi
+        python -m pip install aqtinstall
+        python -m aqt install-qt   --outputdir $QT_INSTALL_DIR $qt_os desktop $QT_VERSION $qt_compiler -m qtcharts qtwebengine
+        python -m aqt install-tool --outputdir $QT_INSTALL_DIR $qt_os desktop tools_ifw qt.tools.ifw.43
 
     - name: Setup cache for Boost files
       uses: actions/cache@v2
