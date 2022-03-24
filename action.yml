@@ -16,8 +16,12 @@ inputs:
     default: 'standard'
   python_version:
     description: 'Python version to install'
-    required: true
+    required: false
     default: '3.8'
+  pybind11_version:
+    description: 'pybind11 version to install'
+    required: false
+    default: '2.6.2'
   workspace_auto_setup:
     description: 'Should this action setup your workspace tree?'
     required: false
@@ -217,16 +221,24 @@ runs:
     - name: Install numpy and scipy
       shell: bash
       run: |
-        if [[ "$RUNNER_OS" == "Linux" ]]; then
-          $PYTHON_ROOT/python -m pip install numpy scipy
-        elif [[ "$RUNNER_OS" == "macOS" ]]; then
+        if [[ "$RUNNER_OS" == "macOS" ]]; then
           brew list | grep python | while read package; do
             brew unlink $package
           done
-          $PYTHON_ROOT/python -m pip install numpy scipy
-        elif [[ "$RUNNER_OS" == "Windows" ]]; then
-          cmd //c "$PYTHON_ROOT/python.exe -m pip install numpy scipy"
         fi
+        $PYTHON_EXE -m pip install numpy scipy
+
+    - name: Install pybind11
+      shell: bash
+      run: |
+        $PYTHON_EXE -m pip install pybind11==${{ inputs.pybind11_version }}
+        pybind11_DIR="pybind11-dir-not-found"
+        if [ -e "$(command -v pybind11-config)" ]; then
+          pybind11_DIR="$(pybind11-config --cmakedir)"
+        elif [ -e "$(command -v pybind11-config-${{ inputs.python_version }})" ]; then
+          pybind11_DIR="$(pybind11-config-${{ inputs.python_version }} --cmakedir)"
+        fi
+        echo "pybind11_DIR=$pybind11_DIR" | tee -a $GITHUB_ENV
 
     - name: Install build tools
       shell: bash
