@@ -41,6 +41,9 @@ outputs:
   python_version:
     description: "Version of the Python installed for SOFA"
     value: ${{ steps.set-python-vars.outputs.python_version }}
+  python_exe:
+    description: "Path to Python executable"
+    value: ${{ steps.set-python-vars.outputs.python_exe }}
   vs_install_dir:
     description: "VS install directory"
     value: ${{ steps.set-env-vars.outputs.vs_install_dir }}
@@ -187,11 +190,20 @@ runs:
         echo "PYTHONIOENCODING=UTF-8" | tee -a $GITHUB_ENV
         
         PYTHON_ROOT="$(find $RUNNER_TOOL_CACHE -maxdepth 3 -type d -path '**/Python/${{ steps.install-python.outputs.python-version }}*/x64')"
-        PYTHON_ROOT="$(cd $PYTHON_ROOT && pwd -W 2>/dev/null || pwd)"   
+        PYTHON_ROOT="$(cd $PYTHON_ROOT && pwd -W 2>/dev/null || pwd)"
+        if [ -e "$PYTHON_ROOT/python.exe" ]; then
+          PYTHON_EXE="$PYTHON_ROOT/python.exe"
+        elif [ -e "$PYTHON_ROOT/python" ]; then
+          PYTHON_EXE="$PYTHON_ROOT/python"
+        else
+          PYTHON_EXE="python-executable-not-found"
+        fi
         echo "PYTHON_ROOT=$PYTHON_ROOT" | tee -a $GITHUB_ENV
         echo "Python_ROOT=$PYTHON_ROOT" | tee -a $GITHUB_ENV
+        echo "PYTHON_EXE=$PYTHON_EXE" | tee -a $GITHUB_ENV
         echo "::set-output name=python_root::$(echo $PYTHON_ROOT)"
         echo "::set-output name=python_version::${{ steps.install-python.outputs.python-version }}"
+        echo "::set-output name=python_exe::$(echo $PYTHON_EXE)"
         echo "------- ls -la PYTHON_ROOT -------"
         ls -la "$PYTHON_ROOT"
         echo "----------------------------------"
