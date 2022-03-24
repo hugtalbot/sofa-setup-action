@@ -193,6 +193,14 @@ runs:
         echo "PYTHONUSERBASE=$PYTHONUSERBASE" | tee -a $GITHUB_ENV
         echo "PYTHONIOENCODING=UTF-8" | tee -a $GITHUB_ENV
         
+        # [MacOS] unlink any brew python
+        if [[ "$RUNNER_OS" == "macOS" ]]; then
+          brew list | grep python | while read package; do
+            echo "brew unlink $package"
+            brew unlink $package
+          done
+        fi
+        
         PYTHON_ROOT="$(find $RUNNER_TOOL_CACHE -maxdepth 3 -type d -path '**/Python/${{ steps.install-python.outputs.python-version }}*/x64')"
         PYTHON_ROOT="$(cd $PYTHON_ROOT && pwd -W 2>/dev/null || pwd)"
         if [ -e "$PYTHON_ROOT/python.exe" ]; then
@@ -221,11 +229,6 @@ runs:
     - name: Install numpy and scipy
       shell: bash
       run: |
-        if [[ "$RUNNER_OS" == "macOS" ]]; then
-          brew list | grep python | while read package; do
-            brew unlink $package
-          done
-        fi
         $PYTHON_EXE -m pip install numpy scipy
 
     - name: Install pybind11
