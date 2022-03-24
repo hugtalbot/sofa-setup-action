@@ -16,7 +16,7 @@ jobs:
         os: [ubuntu-20.04, macos-10.15, windows-2016]
         sofa_branch: [master, v21.06]
 
-    steps:      
+    steps:
       - name: Setup SOFA and deps
         id: sofa
         uses: guparan/sofa-setup-action@add_qt_install

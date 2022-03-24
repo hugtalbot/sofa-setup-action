@@ -144,6 +144,7 @@ runs:
           BOOST_VERSION="brew-latest"
         elif [[ "$RUNNER_OS" == "Windows" ]]; then
           SUDO=''
+          QT_INSTALL_DIR="C:/Qt"
           EIGEN_VERSION=3.3.7
           EIGEN_INSTALL_DIR="C:/eigen"
           BOOST_VERSION=1.69.0
@@ -254,6 +255,11 @@ runs:
         python -m pip install aqtinstall
         python -m aqt install-qt   --outputdir $QT_INSTALL_DIR $qt_os desktop $QT_VERSION $qt_compiler -m qtcharts qtwebengine
         python -m aqt install-tool --outputdir $QT_INSTALL_DIR $qt_os desktop tools_ifw qt.tools.ifw.43
+        Qt5_ROOT="$QT_INSTALL_DIR/$QT_VERSION/${qt_compiler#*win64_}"
+        Qt5_DIR="$Qt5_ROOT/lib/cmake/Qt5"
+        echo "Qt5_ROOT=$Qt5_ROOT" | tee -a $GITHUB_ENV
+        echo "Qt5_DIR=$Qt5_DIR" | tee -a $GITHUB_ENV
+        echo "$Qt5_ROOT" >> $GITHUB_PATH
 
     - name: Setup cache for Boost files
       uses: actions/cache@v2
