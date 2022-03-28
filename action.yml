@@ -397,10 +397,10 @@ runs:
       id: set-sofa-root
       shell: bash
       run: |
-        SOFA_ROOT='${{ inputs.sofa_root }}'
+        SOFA_ROOT="$(cd '${{ inputs.sofa_root }}' && pwd -W 2>/dev/null || pwd)"
         echo "SOFA_ROOT=$SOFA_ROOT" | tee -a $GITHUB_ENV
         echo "$SOFA_ROOT" >> $GITHUB_PATH
         if [[ "$RUNNER_OS" == "Windows" ]]; then
-          echo "$SOFA_ROOT\bin" >> $GITHUB_PATH
+          echo "$SOFA_ROOT/bin" >> $GITHUB_PATH
         fi
         echo "::set-output name=sofa_root::$(echo $SOFA_ROOT)"
