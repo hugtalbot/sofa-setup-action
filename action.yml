@@ -201,6 +201,7 @@ runs:
           done
         fi
         
+        # Set PYTHON_ROOT and PYTHON_EXE
         PYTHON_ROOT="$(find $RUNNER_TOOL_CACHE -maxdepth 3 -type d -path '**/Python/${{ steps.install-python.outputs.python-version }}*/x64')"
         PYTHON_ROOT="$(cd $PYTHON_ROOT && pwd -W 2>/dev/null || pwd)"
         if [ -e "$PYTHON_ROOT/python.exe" ]; then
@@ -220,6 +221,10 @@ runs:
         ls -la "$PYTHON_ROOT"
         echo "----------------------------------"
         
+        # Upgrade pip
+        $PYTHON_EXE -m pip install --upgrade pip
+        
+        # Set SOFA_VERSION_FOR_DEPS
         SOFA_VERSION_FOR_DEPS="$(echo "${{ inputs.sofa_version }}" | sed 's:[^0-9]*::g')"
         if [ -z "$SOFA_VERSION_FOR_DEPS" ]; then
           SOFA_VERSION_FOR_DEPS=0
@@ -283,9 +288,9 @@ runs:
         fi
         if ! ls -a "$QT_INSTALL_DIR"/* >/dev/null 2>&1; then
           # directory does not exist or is empty
-          python -m pip install aqtinstall
-          python -m aqt install-qt   --outputdir $QT_INSTALL_DIR $qt_os desktop $QT_VERSION $qt_compiler -m qtcharts qtwebengine
-          python -m aqt install-tool --outputdir $QT_INSTALL_DIR $qt_os desktop tools_ifw qt.tools.ifw.43
+          $PYTHON_EXE -m pip install aqtinstall
+          $PYTHON_EXE -m aqt install-qt   --outputdir $QT_INSTALL_DIR $qt_os desktop $QT_VERSION $qt_compiler -m qtcharts qtwebengine
+          $PYTHON_EXE -m aqt install-tool --outputdir $QT_INSTALL_DIR $qt_os desktop tools_ifw qt.tools.ifw.43
         fi
         Qt5_ROOT="$QT_INSTALL_DIR/$QT_VERSION/${qt_compiler#*win64_}"
         Qt5_DIR="$Qt5_ROOT/lib/cmake/Qt5"
