@@ -19,7 +19,7 @@ jobs:
     steps:
       - name: Setup SOFA and deps
         id: sofa
-        uses: guparan/sofa-setup-action@ci_improve_workflow
+        uses: sofa-framework/sofa-setup-action@robosoft2022
         with:
           sofa_version: ${{ matrix.sofa_branch }}
           sofa_root: ${{ github.workspace }}/sofa
