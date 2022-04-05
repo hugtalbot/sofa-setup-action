@@ -5,38 +5,32 @@ inputs:
   sofa_root:
     description: 'SOFA install directory'
     required: true
-    default: '/opt/sofa'
   sofa_version:
     description: 'Major version of SOFA to install'
     required: true
-    default: 'v21.06'
   sofa_scope:
     description: 'Choose between: minimal, standard, full'
-    required: false
     default: 'standard'
   sofa_with_sofapython3:
     description: 'SofaPython3 is embedded in SOFA package'
-    required: false
     default: 'true'
   python_version:
     description: 'Python version to install'
-    required: false
     default: '3.9'
   numpy_version:
     description: 'numpy version to install'
-    required: false
     default: '1.21.5'
   scipy_version:
     description: 'scipy version to install'
-    required: false
     default: '1.7.3'
   pybind11_version:
     description: 'pybind11 version to install'
-    required: false
     default: '2.6.2'
+  qt_version:
+    description: 'Qt version to install'
+    default: '5.12.6'    
   workspace_auto_setup:
     description: 'Should this action setup your workspace tree?'
-    required: false
     default: 'true'
 outputs:
   sofa_version:
@@ -150,7 +144,6 @@ runs:
         echo "CCACHE_DIR=$GITHUB_WORKSPACE/.ccache" | tee -a $GITHUB_ENV
         
         # TODO: find a better way to handle dependency versions
-        QT_VERSION="5.12.6"
         QT_INSTALL_DIR="$HOME/Qt"
         EIGEN_INSTALL_DIR="/tmp/deps_cache_is_for_windows_only"
         BOOST_INSTALL_DIR="/tmp/deps_cache_is_for_windows_only"
@@ -175,7 +168,6 @@ runs:
         fi
         
         echo "SUDO=$SUDO" | tee -a $GITHUB_ENV
-        echo "QT_VERSION=$QT_VERSION" | tee -a $GITHUB_ENV
         echo "QT_INSTALL_DIR=$QT_INSTALL_DIR" | tee -a $GITHUB_ENV
         echo "EIGEN_VERSION=$EIGEN_VERSION" | tee -a $GITHUB_ENV
         echo "EIGEN_INSTALL_DIR=$EIGEN_INSTALL_DIR" | tee -a $GITHUB_ENV
@@ -282,7 +274,7 @@ runs:
       id: qt_cache
       with:
         path: ${{ env.QT_INSTALL_DIR }}
-        key: qt-${{ env.QT_VERSION }}_${{ runner.os }}_for-SOFA-${{ inputs.sofa_version }}_${{ hashFiles('**/*.yml') }}
+        key: qt-${{ inputs.qt_version }}_${{ runner.os }}_for-SOFA-${{ inputs.sofa_version }}_${{ hashFiles('**/*.yml') }}
         
     - name: Install Qt
       if: inputs.sofa_scope != 'minimal'
@@ -301,10 +293,10 @@ runs:
         if ! ls -a "$QT_INSTALL_DIR"/* >/dev/null 2>&1; then
           # directory does not exist or is empty
           $PYTHON_EXE -m pip install aqtinstall
-          $PYTHON_EXE -m aqt install-qt   --outputdir $QT_INSTALL_DIR $qt_os desktop $QT_VERSION $qt_compiler -m qtcharts qtwebengine
+          $PYTHON_EXE -m aqt install-qt   --outputdir $QT_INSTALL_DIR $qt_os desktop ${{ inputs.qt_version }} $qt_compiler -m qtcharts qtwebengine
           $PYTHON_EXE -m aqt install-tool --outputdir $QT_INSTALL_DIR $qt_os desktop tools_ifw qt.tools.ifw.43
         fi
-        Qt5_ROOT="$QT_INSTALL_DIR/$QT_VERSION/${qt_compiler#*win64_}"
+        Qt5_ROOT="$QT_INSTALL_DIR/${{ inputs.qt_version }}/${qt_compiler#*win64_}"
         Qt5_DIR="$Qt5_ROOT/lib/cmake/Qt5"
         echo "Qt5_ROOT=$Qt5_ROOT" | tee -a $GITHUB_ENV
         echo "Qt5_DIR=$Qt5_DIR" | tee -a $GITHUB_ENV
