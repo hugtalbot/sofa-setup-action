@@ -19,7 +19,7 @@ jobs:
     steps:
       - name: Setup SOFA and deps
         id: sofa
-        uses: sofa-framework/sofa-setup-action@master
+        uses: sofa-framework/sofa-setup-action@v4
         with:
           sofa_version: ${{ matrix.sofa_branch }}
           sofa_root: ${{ github.workspace }}/sofa

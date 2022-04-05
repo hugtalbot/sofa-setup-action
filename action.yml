@@ -14,10 +14,26 @@ inputs:
     description: 'Choose between: minimal, standard, full'
     required: false
     default: 'standard'
+  sofa_with_sofapython3:
+    description: 'SofaPython3 is embedded in SOFA package'
+    required: false
+    default: 'true'
   python_version:
     description: 'Python version to install'
-    required: true
+    required: false
     default: '3.9'
+  numpy_version:
+    description: 'numpy version to install'
+    required: false
+    default: '1.21.5'
+  scipy_version:
+    description: 'scipy version to install'
+    required: false
+    default: '1.7.3'
+  pybind11_version:
+    description: 'pybind11 version to install'
+    required: false
+    default: '2.6.2'
   workspace_auto_setup:
     description: 'Should this action setup your workspace tree?'
     required: false
@@ -41,6 +57,9 @@ outputs:
   python_version:
     description: "Version of the Python installed for SOFA"
     value: ${{ steps.set-python-vars.outputs.python_version }}
+  python_exe:
+    description: "Path to Python executable"
+    value: ${{ steps.set-python-vars.outputs.python_exe }}
   vs_install_dir:
     description: "VS install directory"
     value: ${{ steps.set-env-vars.outputs.vs_install_dir }}
@@ -131,6 +150,8 @@ runs:
         echo "CCACHE_DIR=$GITHUB_WORKSPACE/.ccache" | tee -a $GITHUB_ENV
         
         # TODO: find a better way to handle dependency versions
+        QT_VERSION="5.12.6"
+        QT_INSTALL_DIR="$HOME/Qt"
         EIGEN_INSTALL_DIR="/tmp/deps_cache_is_for_windows_only"
         BOOST_INSTALL_DIR="/tmp/deps_cache_is_for_windows_only"
         SUDO='sudo'
@@ -142,6 +163,7 @@ runs:
           BOOST_VERSION="brew-latest"
         elif [[ "$RUNNER_OS" == "Windows" ]]; then
           SUDO=''
+          QT_INSTALL_DIR="C:/Qt"
           EIGEN_VERSION=3.3.7
           EIGEN_INSTALL_DIR="C:/eigen"
           BOOST_VERSION=1.69.0
@@ -153,6 +175,8 @@ runs:
         fi
         
         echo "SUDO=$SUDO" | tee -a $GITHUB_ENV
+        echo "QT_VERSION=$QT_VERSION" | tee -a $GITHUB_ENV
+        echo "QT_INSTALL_DIR=$QT_INSTALL_DIR" | tee -a $GITHUB_ENV
         echo "EIGEN_VERSION=$EIGEN_VERSION" | tee -a $GITHUB_ENV
         echo "EIGEN_INSTALL_DIR=$EIGEN_INSTALL_DIR" | tee -a $GITHUB_ENV
         echo "BOOST_VERSION=$BOOST_VERSION" | tee -a $GITHUB_ENV
@@ -181,35 +205,60 @@ runs:
         echo "PYTHONUSERBASE=$PYTHONUSERBASE" | tee -a $GITHUB_ENV
         echo "PYTHONIOENCODING=UTF-8" | tee -a $GITHUB_ENV
         
+        # [MacOS] unlink any brew python
+        #if [[ "$RUNNER_OS" == "macOS" ]]; then
+        #  brew list | grep python | while read package; do
+        #    echo "brew unlink $package"
+        #    brew unlink $package
+        #  done
+        #fi
+        
+        # Set PYTHON_ROOT and PYTHON_EXE
         PYTHON_ROOT="$(find $RUNNER_TOOL_CACHE -maxdepth 3 -type d -path '**/Python/${{ steps.install-python.outputs.python-version }}*/x64')"
-        PYTHON_ROOT="$(cd $PYTHON_ROOT && pwd -W 2>/dev/null || pwd)"   
+        PYTHON_ROOT="$(cd $PYTHON_ROOT && pwd -W 2>/dev/null || pwd)"
+        if [ -e "$PYTHON_ROOT/python.exe" ]; then
+          PYTHON_EXE="$PYTHON_ROOT/python.exe"
+        elif [ -e "$PYTHON_ROOT/python" ]; then
+          PYTHON_EXE="$PYTHON_ROOT/python"
+        else
+          PYTHON_EXE="python-executable-not-found"
+        fi
         echo "PYTHON_ROOT=$PYTHON_ROOT" | tee -a $GITHUB_ENV
         echo "Python_ROOT=$PYTHON_ROOT" | tee -a $GITHUB_ENV
+        echo "PYTHON_EXE=$PYTHON_EXE" | tee -a $GITHUB_ENV
         echo "::set-output name=python_root::$(echo $PYTHON_ROOT)"
         echo "::set-output name=python_version::${{ steps.install-python.outputs.python-version }}"
+        echo "::set-output name=python_exe::$(echo $PYTHON_EXE)"
         echo "------- ls -la PYTHON_ROOT -------"
         ls -la "$PYTHON_ROOT"
         echo "----------------------------------"
         
+        # Upgrade pip
+        $PYTHON_EXE -m pip install --upgrade pip
+        
+        # Set SOFA_VERSION_FOR_DEPS
         SOFA_VERSION_FOR_DEPS="$(echo "${{ inputs.sofa_version }}" | sed 's:[^0-9]*::g')"
         if [ -z "$SOFA_VERSION_FOR_DEPS" ]; then
           SOFA_VERSION_FOR_DEPS=0
         fi
         echo "SOFA_VERSION_FOR_DEPS=$SOFA_VERSION_FOR_DEPS" | tee -a $GITHUB_ENV
 
-    - name: Install numpy and scipy
+    - name: Install numpy ${{ inputs.numpy_version }} and scipy ${{ inputs.scipy_version }}
       shell: bash
       run: |
-        if [[ "$RUNNER_OS" == "Linux" ]]; then
-          $PYTHON_ROOT/python -m pip install numpy scipy
-        elif [[ "$RUNNER_OS" == "macOS" ]]; then
-          brew list | grep python | while read package; do
-            brew unlink $package
-          done
-          $PYTHON_ROOT/python -m pip install numpy scipy
-        elif [[ "$RUNNER_OS" == "Windows" ]]; then
-          cmd //c "$PYTHON_ROOT/python.exe -m pip install numpy scipy"
+        $PYTHON_EXE -m pip install numpy==${{ inputs.numpy_version }} scipy==${{ inputs.scipy_version }}
+
+    - name: Install pybind11 ${{ inputs.pybind11_version }}
+      shell: bash
+      run: |
+        $PYTHON_EXE -m pip install pybind11==${{ inputs.pybind11_version }}
+        pybind11_DIR="pybind11-dir-not-found"
+        if [ -e "$(command -v pybind11-config)" ]; then
+          pybind11_DIR="$(pybind11-config --cmakedir)"
+        elif [ -e "$(command -v pybind11-config-${{ inputs.python_version }})" ]; then
+          pybind11_DIR="$(pybind11-config-${{ inputs.python_version }} --cmakedir)"
         fi
+        echo "pybind11_DIR=$pybind11_DIR" | tee -a $GITHUB_ENV
 
     - name: Install build tools
       shell: bash
@@ -226,6 +275,40 @@ runs:
         elif [[ "$RUNNER_OS" == "Windows" ]]; then
           cmd //c 'choco install -y --no-progress nsis curl ninja'
         fi
+
+    - name: Setup cache for Qt files
+      if: inputs.sofa_scope != 'minimal'
+      uses: actions/cache@v2
+      id: qt_cache
+      with:
+        path: ${{ env.QT_INSTALL_DIR }}
+        key: qt-${{ env.QT_VERSION }}_${{ runner.os }}_for-SOFA-${{ inputs.sofa_version }}_${{ hashFiles('**/*.yml') }}
+        
+    - name: Install Qt
+      if: inputs.sofa_scope != 'minimal'
+      shell: bash
+      run: |
+        if [[ "$RUNNER_OS" == "Linux" ]]; then
+          qt_os="linux"
+          qt_compiler="gcc_64"
+        elif [[ "$RUNNER_OS" == "macOS" ]]; then
+          qt_os="mac"
+          qt_compiler="clang_64"
+        elif [[ "$RUNNER_OS" == "Windows" ]]; then
+          qt_os="windows"
+          qt_compiler="win64_msvc2017_64"
+        fi
+        if ! ls -a "$QT_INSTALL_DIR"/* >/dev/null 2>&1; then
+          # directory does not exist or is empty
+          $PYTHON_EXE -m pip install aqtinstall
+          $PYTHON_EXE -m aqt install-qt   --outputdir $QT_INSTALL_DIR $qt_os desktop $QT_VERSION $qt_compiler -m qtcharts qtwebengine
+          $PYTHON_EXE -m aqt install-tool --outputdir $QT_INSTALL_DIR $qt_os desktop tools_ifw qt.tools.ifw.43
+        fi
+        Qt5_ROOT="$QT_INSTALL_DIR/$QT_VERSION/${qt_compiler#*win64_}"
+        Qt5_DIR="$Qt5_ROOT/lib/cmake/Qt5"
+        echo "Qt5_ROOT=$Qt5_ROOT" | tee -a $GITHUB_ENV
+        echo "Qt5_DIR=$Qt5_DIR" | tee -a $GITHUB_ENV
+        echo "$Qt5_ROOT" >> $GITHUB_PATH
 
     - name: Setup cache for Boost files
       uses: actions/cache@v2
@@ -296,64 +379,6 @@ runs:
           echo "$EIGEN_INSTALL_DIR" >> $GITHUB_PATH
         fi
 
-    - name: Set env vars for pybind11 installation
-      shell: bash
-      run: |
-        # Define pybind11 specs
-        PYBIND11_VERSION=2.4.3
-        PYBIND11_INSTALL_PATH="/tmp/deps_cache_is_for_windows_only"
-        if [[ "$RUNNER_OS" == "Windows" ]]; then
-          PYBIND11_INSTALL_PATH="C:/pybind11"
-        fi
-        echo "PYBIND11_VERSION=$PYBIND11_VERSION" | tee -a $GITHUB_ENV
-        echo "PYBIND11_INSTALL_PATH=$PYBIND11_INSTALL_PATH" | tee -a $GITHUB_ENV
-      
-    - name: Setup cache for pybind11 files
-      uses: actions/cache@v2
-      id: pybind11_cache
-      with:
-        path: ${{ env.PYBIND11_INSTALL_PATH }}
-        key: pybind11-${{ env.PYBIND11_VERSION }}_${{ runner.os }}_python-${{ inputs.python_version }}_${{ hashFiles('**/*.yml') }}
-    
-    - name: Install pybind11
-      shell: bash
-      run: |
-        # Build and install pybind11
-        if [[ "$RUNNER_OS" == "Windows" ]]; then
-          if ! ls -a "$PYBIND11_INSTALL_PATH"/* >/dev/null 2>&1; then
-            # directory does not exist or is empty
-            git clone -b v$PYBIND11_VERSION --depth 1 https://github.com/pybind/pybind11.git "${{ runner.temp }}/pybind11_tmp"
-            cmd //c "${{ steps.set-env-vars.outputs.vs_vsdevcmd }} && \
-              cd /d ${{ runner.temp }}/pybind11_tmp && \
-              cmake \
-                -GNinja \
-                -DCMAKE_BUILD_TYPE=Release \
-                -DPYBIND11_TEST=OFF \
-                -DCMAKE_INSTALL_PREFIX=$PYBIND11_INSTALL_PATH \
-                -DPYTHON_ROOT=$PYTHON_ROOT \
-                -DPython_ROOT=$PYTHON_ROOT \
-                -DPYTHON_EXECUTABLE=$PYTHON_ROOT/python.exe \
-                -DPython_EXECUTABLE=$PYTHON_ROOT/python.exe \
-                . && \
-                ninja install"
-          fi          
-          echo "pybind11_ROOT=$PYBIND11_INSTALL_PATH" | tee -a $GITHUB_ENV
-          echo "$PYBIND11_INSTALL_PATH" >> $GITHUB_PATH
-        else
-          git clone -b v${PYBIND11_VERSION} --depth 1 https://github.com/pybind/pybind11.git "${{ runner.temp }}/pybind11_tmp"
-          cd "${{ runner.temp }}/pybind11_tmp"
-          cmake \
-            -GNinja \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DPYBIND11_TEST=OFF \
-            -DPYTHON_ROOT=$PYTHON_ROOT \
-            -DPython_ROOT=$PYTHON_ROOT \
-            -DPYTHON_EXECUTABLE=$PYTHON_ROOT/python \
-            -DPython_EXECUTABLE=$PYTHON_ROOT/python \
-            .
-          sudo ninja install
-        fi
-
     - name: Download and install the latest SOFA ${{ inputs.sofa_version }} binaries
       shell: bash
       run: |
@@ -365,8 +390,9 @@ runs:
         if ! ls -a "${{ inputs.sofa_root }}"/* >/dev/null 2>&1; then
           # directory does not exist or is empty
           mkdir -p "${{ runner.temp }}/sofa_tmp/zip" "${{ runner.temp }}/sofa_tmp/binaries"
-          curl --output "${{ runner.temp }}/sofa_tmp/${SOFA_OS}.zip" -L \
-            https://ci.inria.fr/sofa-ci-dev/job/nightly-generate-binaries/CI_BRANCH=${{ inputs.sofa_version }},CI_SCOPE=${{ inputs.sofa_scope }}/lastSuccessfulBuild/artifact/${SOFA_OS}/*zip*/${SOFA_OS}.zip
+          url="https://ci.inria.fr/sofa-ci-dev/job/nightly-generate-binaries/CI_BRANCH=${{ inputs.sofa_version }},CI_SCOPE=${{ inputs.sofa_scope }}/lastSuccessfulBuild/artifact/${SOFA_OS}/*zip*/${SOFA_OS}.zip"
+          echo "Getting SOFA from $url"
+          curl --output "${{ runner.temp }}/sofa_tmp/${SOFA_OS}.zip" -L $url
           unzip -qq "${{ runner.temp }}"/sofa_tmp/${SOFA_OS}.zip -d "${{ runner.temp }}/sofa_tmp/zip"
           unzip -qq "${{ runner.temp }}"/sofa_tmp/zip/${SOFA_OS}/SOFA_*.zip -d "${{ runner.temp }}/sofa_tmp/binaries"
           $SUDO mkdir -p "${{ inputs.sofa_root }}"
@@ -378,15 +404,25 @@ runs:
         ls -la "${{ inputs.sofa_root }}"
         echo '--------------- git-info.txt ---------------'
         cat "${{ inputs.sofa_root }}"/git-info.txt 2>&1 || true
-        
+
     - name: Set SOFA_ROOT and outputs.sofa_root
       id: set-sofa-root
       shell: bash
       run: |
-        SOFA_ROOT='${{ inputs.sofa_root }}'
+        SOFA_ROOT="$(cd '${{ inputs.sofa_root }}' && pwd -W 2>/dev/null || pwd)"
         echo "SOFA_ROOT=$SOFA_ROOT" | tee -a $GITHUB_ENV
         echo "$SOFA_ROOT" >> $GITHUB_PATH
         if [[ "$RUNNER_OS" == "Windows" ]]; then
-          echo "$SOFA_ROOT\bin" >> $GITHUB_PATH
+          echo "$SOFA_ROOT/bin" >> $GITHUB_PATH
         fi
         echo "::set-output name=sofa_root::$(echo $SOFA_ROOT)"
+
+    - name: Remove SofaPython3 from SOFA binaries
+      if: inputs.sofa_with_sofapython3 != 'true'
+      shell: bash
+      run: |
+        # TODO: remove this step when SOFA "standard" no longer contains SP3
+        echo "Removing SofaPython3 from SOFA binaries (if any)"
+        rm -rf $SOFA_ROOT/plugins/SofaPython3*
+        rm -rf $SOFA_ROOT/bin/SofaPython3*
+        rm -rf $SOFA_ROOT/lib/SofaPython3*
