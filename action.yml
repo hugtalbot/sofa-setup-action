@@ -28,7 +28,10 @@ inputs:
     default: '2.6.2'
   qt_version:
     description: 'Qt version to install'
-    default: '5.12.6'    
+    default: '5.12.6'
+  eigen_version:
+    description: 'Eigen version to install'
+    default: '3.3.7'
   workspace_auto_setup:
     description: 'Should this action setup your workspace tree?'
     default: 'true'
@@ -145,19 +148,16 @@ runs:
         
         # TODO: find a better way to handle dependency versions
         QT_INSTALL_DIR="$HOME/Qt"
-        EIGEN_INSTALL_DIR="/tmp/deps_cache_is_for_windows_only"
+        EIGEN_INSTALL_DIR="$(cd "$HOME" && pwd -W 2>/dev/null || pwd)/eigen"
         BOOST_INSTALL_DIR="/tmp/deps_cache_is_for_windows_only"
         SUDO='sudo'
         if [[ "$RUNNER_OS" == "Linux" ]]; then
-          EIGEN_VERSION="apt-latest"
           BOOST_VERSION="apt-latest"
         elif [[ "$RUNNER_OS" == "macOS" ]]; then
-          EIGEN_VERSION="brew-latest"
           BOOST_VERSION="brew-latest"
         elif [[ "$RUNNER_OS" == "Windows" ]]; then
           SUDO=''
           QT_INSTALL_DIR="C:/Qt"
-          EIGEN_VERSION=3.3.7
           EIGEN_INSTALL_DIR="C:/eigen"
           BOOST_VERSION=1.69.0
           BOOST_INSTALL_DIR="C:/boost"
@@ -169,7 +169,6 @@ runs:
         
         echo "SUDO=$SUDO" | tee -a $GITHUB_ENV
         echo "QT_INSTALL_DIR=$QT_INSTALL_DIR" | tee -a $GITHUB_ENV
-        echo "EIGEN_VERSION=$EIGEN_VERSION" | tee -a $GITHUB_ENV
         echo "EIGEN_INSTALL_DIR=$EIGEN_INSTALL_DIR" | tee -a $GITHUB_ENV
         echo "BOOST_VERSION=$BOOST_VERSION" | tee -a $GITHUB_ENV
         echo "BOOST_INSTALL_DIR=$BOOST_INSTALL_DIR" | tee -a $GITHUB_ENV
@@ -196,14 +195,6 @@ runs:
         mkdir -p "$PYTHONUSERBASE" && chmod -R 777 "$PYTHONUSERBASE"
         echo "PYTHONUSERBASE=$PYTHONUSERBASE" | tee -a $GITHUB_ENV
         echo "PYTHONIOENCODING=UTF-8" | tee -a $GITHUB_ENV
-        
-        # [MacOS] unlink any brew python
-        #if [[ "$RUNNER_OS" == "macOS" ]]; then
-        #  brew list | grep python | while read package; do
-        #    echo "brew unlink $package"
-        #    brew unlink $package
-        #  done
-        #fi
         
         # Set PYTHON_ROOT and PYTHON_EXE
         PYTHON_ROOT="$(find $RUNNER_TOOL_CACHE -maxdepth 3 -type d -path '**/Python/${{ steps.install-python.outputs.python-version }}*/x64')"
@@ -348,28 +339,22 @@ runs:
       id: eigen_cache
       with:
         path: ${{ env.EIGEN_INSTALL_DIR }}
-        key: eigen-${{ env.EIGEN_VERSION }}_${{ runner.os }}_${{ hashFiles('**/*.yml') }}
+        key: eigen-${{ inputs.eigen_version }}_${{ runner.os }}_${{ hashFiles('**/*.yml') }}
 
     - name: Install Eigen
       shell: bash
       run: |
-        if [[ "$RUNNER_OS" == "Linux" ]]; then
-          sudo apt-get -qq install libeigen3-dev
-        elif [[ "$RUNNER_OS" == "macOS" ]]; then
-          brew install eigen
-        elif [[ "$RUNNER_OS" == "Windows" ]]; then
-          if ! ls -a "$EIGEN_INSTALL_DIR"/* >/dev/null 2>&1; then
-            # directory does not exist or is empty
-            mkdir -p "$EIGEN_INSTALL_DIR"
-            curl --output "${{ runner.temp }}/eigen_tmp.zip" -L \
-              "https://gitlab.com/libeigen/eigen/-/archive/${EIGEN_VERSION}/eigen-${EIGEN_VERSION}.zip"
-            unzip -qq "${{ runner.temp }}/eigen_tmp.zip" -d "${{ runner.temp }}/eigen_tmp"
-            mv "${{ runner.temp }}"/eigen_tmp/eigen-*/* $EIGEN_INSTALL_DIR
-          fi
-          echo "EIGEN3_ROOT=$EIGEN_INSTALL_DIR" | tee -a $GITHUB_ENV
-          echo "Eigen3_ROOT=$EIGEN_INSTALL_DIR" | tee -a $GITHUB_ENV
-          echo "$EIGEN_INSTALL_DIR" >> $GITHUB_PATH
+        if ! ls -a "$EIGEN_INSTALL_DIR"/* >/dev/null 2>&1; then
+          # directory does not exist or is empty
+          mkdir -p "$EIGEN_INSTALL_DIR"
+          curl --output "${{ runner.temp }}/eigen_tmp.zip" -L \
+            "https://gitlab.com/libeigen/eigen/-/archive/${{ inputs.eigen_version }}/eigen-${{ inputs.eigen_version }}.zip"
+          unzip -qq "${{ runner.temp }}/eigen_tmp.zip" -d "${{ runner.temp }}/eigen_tmp"
+          $SUDO mv "${{ runner.temp }}"/eigen_tmp/eigen-*/* $EIGEN_INSTALL_DIR
         fi
+        echo "EIGEN3_ROOT=$EIGEN_INSTALL_DIR" | tee -a $GITHUB_ENV
+        echo "Eigen3_ROOT=$EIGEN_INSTALL_DIR" | tee -a $GITHUB_ENV
+        echo "$EIGEN_INSTALL_DIR" >> $GITHUB_PATH
 
     - name: Download and install the latest SOFA ${{ inputs.sofa_version }} binaries
       shell: bash
