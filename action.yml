@@ -16,19 +16,19 @@ inputs:
     default: 'true'
   python_version:
     description: 'Python version to install'
-    default: '3.9'
+    default: '3.8'
   numpy_version:
     description: 'numpy version to install'
-    default: '1.21.5'
+    default: 'latest'
   scipy_version:
     description: 'scipy version to install'
-    default: '1.7.3'
+    default: 'latest'
   pybind11_version:
     description: 'pybind11 version to install'
-    default: '2.6.2'
+    default: '2.4.3'
   qt_version:
     description: 'Qt version to install'
-    default: '5.12.6'
+    default: '5.12.8'
   eigen_version:
     description: 'Eigen version to install'
     default: '3.3.7'
@@ -229,7 +229,19 @@ runs:
     - name: Install numpy ${{ inputs.numpy_version }} and scipy ${{ inputs.scipy_version }}
       shell: bash
       run: |
-        $PYTHON_EXE -m pip install numpy==${{ inputs.numpy_version }} scipy==${{ inputs.scipy_version }}
+        if [[ "${{ inputs.numpy_version }}" == "latest" ]]; then
+            $PYTHON_EXE -m pip install numpy
+        else
+            $PYTHON_EXE -m pip install numpy==${{ inputs.numpy_version }}
+        fi
+        if [[ "${{ inputs.scipy_version }}" == "latest" ]]; then
+            $PYTHON_EXE -m pip install scipy
+        else
+            $PYTHON_EXE -m pip install scipy==${{ inputs.scipy_version }}
+        fi
+        echo '---- pip show numpy scipy ----'
+        $PYTHON_EXE -m pip show numpy scipy
+        echo '------------------------------'
 
     - name: Install pybind11 ${{ inputs.pybind11_version }}
       shell: bash
