@@ -301,8 +301,10 @@ runs:
         fi
         Qt5_ROOT="$QT_INSTALL_DIR/${{ inputs.qt_version }}/${qt_compiler#*win64_}"
         Qt5_DIR="$Qt5_ROOT/lib/cmake/Qt5"
+        QTIFWDIR="$(ls -d $QT_INSTALL_DIR/Tools/QtInstallerFramework/*/ | head -n 1 | sed 's://$::g')"
         echo "Qt5_ROOT=$Qt5_ROOT" | tee -a $GITHUB_ENV
         echo "Qt5_DIR=$Qt5_DIR" | tee -a $GITHUB_ENV
+        echo "QTIFWDIR=$QTIFWDIR" | tee -a $GITHUB_ENV
         echo "$Qt5_ROOT" >> $GITHUB_PATH
 
     - name: Setup cache for Boost files
