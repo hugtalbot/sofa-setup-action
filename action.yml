@@ -150,6 +150,7 @@ runs:
         QT_INSTALL_DIR="$HOME/Qt"
         EIGEN_INSTALL_DIR="$(cd "$HOME" && pwd -W 2>/dev/null || pwd)/eigen"
         BOOST_INSTALL_DIR="/tmp/deps_cache_is_for_windows_only"
+        PYBIND11_INSTALL_DIR="${{ runner.temp }}/pybind11"
         SUDO='sudo'
         if [[ "$RUNNER_OS" == "Linux" ]]; then
           BOOST_VERSION="apt-latest"
@@ -172,11 +173,28 @@ runs:
         echo "EIGEN_INSTALL_DIR=$EIGEN_INSTALL_DIR" | tee -a $GITHUB_ENV
         echo "BOOST_VERSION=$BOOST_VERSION" | tee -a $GITHUB_ENV
         echo "BOOST_INSTALL_DIR=$BOOST_INSTALL_DIR" | tee -a $GITHUB_ENV
+        echo "PYBIND11_INSTALL_DIR=$PYBIND11_INSTALL_DIR" | tee -a $GITHUB_ENV
         echo "VS_INSTALL_DIR=$VS_INSTALL_DIR" | tee -a $GITHUB_ENV
         echo "VS_VSDEVCMD=$VS_VSDEVCMD" | tee -a $GITHUB_ENV
         
         echo "::set-output name=vs_install_dir::$(echo $VS_INSTALL_DIR)"
         echo "::set-output name=vs_vsdevcmd::$(echo $VS_VSDEVCMD)"
+
+    - name: Install build tools
+      shell: bash
+      run: |
+        if [[ "$RUNNER_OS" == "Linux" ]]; then
+          sudo apt-get update
+          sudo apt-get -qq install ccache ninja-build
+          sudo apt-get -qq install freeglut3-dev libopengl0
+          sudo apt-get -qq install libpng-dev libjpeg-dev libtiff-dev libglew-dev zlib1g-dev
+        elif [[ "$RUNNER_OS" == "macOS" ]]; then
+          brew update && brew upgrade
+          brew install ccache ninja
+          brew install glew
+        elif [[ "$RUNNER_OS" == "Windows" ]]; then
+          cmd //c 'choco install -y --no-progress nsis curl ninja'
+        fi
 
     - name: Install Python
       id: install-python
@@ -242,34 +260,50 @@ runs:
         echo '---- pip show numpy scipy ----'
         $PYTHON_EXE -m pip show numpy scipy
         echo '------------------------------'
-
+ 
+    - name: Setup cache for pybind11 files
+      uses: actions/cache@v2
+      id: pybind11_cache
+      with:
+        path: ${{ env.PYBIND11_INSTALL_DIR }}
+        key: pybind11-${{ inputs.pybind11_version }}_${{ runner.os }}_python-${{ inputs.python_version }}_${{ hashFiles('**/*.yml') }}
+    
     - name: Install pybind11 ${{ inputs.pybind11_version }}
       shell: bash
       run: |
-        $PYTHON_EXE -m pip install pybind11==${{ inputs.pybind11_version }}
-        pybind11_DIR="pybind11-dir-not-found"
-        if [ -e "$(command -v pybind11-config)" ]; then
-          pybind11_DIR="$(pybind11-config --cmakedir)"
-        elif [ -e "$(command -v pybind11-config-${{ inputs.python_version }})" ]; then
-          pybind11_DIR="$(pybind11-config-${{ inputs.python_version }} --cmakedir)"
+        # TODO: use pip when minimal supported pybind11 will be >= 2.6.2
+        #$PYTHON_EXE -m pip install pybind11==${{ inputs.pybind11_version }}
+        #pybind11_DIR="pybind11-dir-not-found"
+        #if [ -e "$(command -v pybind11-config)" ]; then
+        #  pybind11_DIR="$(pybind11-config --cmakedir)"
+        #elif [ -e "$(command -v pybind11-config-${{ inputs.python_version }})" ]; then
+        #  pybind11_DIR="$(pybind11-config-${{ inputs.python_version }} --cmakedir)"
+        #fi
+        
+        if ! ls -a "$PYBIND11_INSTALL_DIR"/* >/dev/null 2>&1; then
+          # directory does not exist or is empty
+          git clone -b v${{ inputs.pybind11_version }} --depth 1 https://github.com/pybind/pybind11.git "${{ runner.temp }}/pybind11_tmp"          
+          cmake_options="-GNinja \
+              -DCMAKE_BUILD_TYPE=Release \
+              -DCMAKE_INSTALL_PREFIX=$PYBIND11_INSTALL_DIR \
+              -DPYBIND11_TEST=OFF \
+              -DPYTHON_EXECUTABLE=$PYTHON_EXE \
+              "
+          cmake_options="$(echo $cmake_options)" # prettify          
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            cmd //c "$VS_VSDEVCMD \
+              && cd /d ${{ runner.temp }}/pybind11_tmp \
+              && cmake $cmake_options . \
+              && ninja install"
+          else
+            cd "${{ runner.temp }}/pybind11_tmp"
+            cmake $cmake_options .
+            ninja install
+          fi
         fi
+        
+        pybind11_DIR="$PYBIND11_INSTALL_DIR/share/cmake/pybind11"
         echo "pybind11_DIR=$pybind11_DIR" | tee -a $GITHUB_ENV
-
-    - name: Install build tools
-      shell: bash
-      run: |
-        if [[ "$RUNNER_OS" == "Linux" ]]; then
-          sudo apt-get update
-          sudo apt-get -qq install ccache ninja-build
-          sudo apt-get -qq install freeglut3-dev libopengl0
-          sudo apt-get -qq install libpng-dev libjpeg-dev libtiff-dev libglew-dev zlib1g-dev
-        elif [[ "$RUNNER_OS" == "macOS" ]]; then
-          brew update && brew upgrade
-          brew install ccache ninja
-          brew install glew
-        elif [[ "$RUNNER_OS" == "Windows" ]]; then
-          cmd //c 'choco install -y --no-progress nsis curl ninja'
-        fi
 
     - name: Setup cache for Qt files
       if: inputs.sofa_scope != 'minimal'
