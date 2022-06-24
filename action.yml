@@ -415,7 +415,13 @@ runs:
         if ! ls -a "${{ inputs.sofa_root }}"/* >/dev/null 2>&1; then
           # directory does not exist or is empty
           mkdir -p "${{ runner.temp }}/sofa_tmp/zip" "${{ runner.temp }}/sofa_tmp/binaries"
-          url="https://ci.inria.fr/sofa-ci-dev/job/nightly-generate-binaries/CI_BRANCH=${{ inputs.sofa_version }},CI_SCOPE=${{ inputs.sofa_scope }}/lastSuccessfulBuild/artifact/${SOFA_OS}/*zip*/${SOFA_OS}.zip"
+          urlPrefix="https://ci.inria.fr/sofa-ci-dev/job/nightly-generate-binaries/CI_BRANCH=${{ inputs.sofa_version }},CI_SCOPE=${{ inputs.sofa_scope }}"
+          urlSuffix="artifact/${SOFA_OS}/*zip*/${SOFA_OS}.zip"
+          url="$urlPrefix/lastBuild/$urlSuffix"
+          if ! curl --output /dev/null --silent --head --fail "$url"; then
+            echo 'There is no artifact for "lastBuild". Falling back on "lastSuccessfulBuild".'
+            url="$urlPrefix/lastSuccessfulBuild/$urlSuffix"
+          fi
           echo "Getting SOFA from $url"
           curl --output "${{ runner.temp }}/sofa_tmp/${SOFA_OS}.zip" -L $url
           unzip -qq "${{ runner.temp }}"/sofa_tmp/${SOFA_OS}.zip -d "${{ runner.temp }}/sofa_tmp/zip"
