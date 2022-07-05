@@ -420,7 +420,7 @@ runs:
         if ! ls -a "${{ inputs.sofa_root }}"/* >/dev/null 2>&1; then # cache check
           # directory does not exist or is empty
           
-          if [ -n "${{ steps.get_sofa_from_github.outputs.id }}" ]; then
+          if [[ -n "${{ steps.get_sofa_from_github.outputs.id }}" ]] && [[ "${{ steps.get_sofa_from_github.outputs.draft }}" == "false" ]]; then
             # Release was found on GitHub
             SOFA_OS_GITHUB="$RUNNER_OS"
             if [[ "$SOFA_OS_GITHUB" == "Linux" ]]; then
