@@ -458,7 +458,7 @@ runs:
               url="$urlPrefix/lastSuccessfulBuild/$urlSuffix"
             fi
             echo "Getting SOFA from $url"
-            curl --output "${{ runner.temp }}/sofa_tmp/${SOFA_OS_JENKINS}.zip" -L $url
+            curl --http1.0 --output "${{ runner.temp }}/sofa_tmp/${SOFA_OS_JENKINS}.zip" -L $url
             unzip -qq "${{ runner.temp }}"/sofa_tmp/${SOFA_OS_JENKINS}.zip -d "${{ runner.temp }}/sofa_tmp/zip"
             unzip -qq "${{ runner.temp }}"/sofa_tmp/zip/${SOFA_OS_JENKINS}/SOFA_*.zip -d "${{ runner.temp }}/sofa_tmp/binaries"
             $SUDO mkdir -p "${{ inputs.sofa_root }}"
