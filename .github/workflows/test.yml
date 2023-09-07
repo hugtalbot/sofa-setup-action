@@ -17,9 +17,11 @@ jobs:
         sofa_branch: [master, v21.06, v21.12, v22.06, v22.12, v23.06]
 
     steps:
+      - name: Check out repository
+        uses: actions/checkout@v3
       - name: Setup SOFA and deps
         id: sofa
-        uses: sofa-framework/sofa-setup-action@v4
+        uses: ./
         with:
           sofa_version: ${{ matrix.sofa_branch }}
           sofa_root: ${{ github.workspace }}/sofa

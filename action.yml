@@ -103,7 +103,7 @@ runs:
           EXE='.exe'
         fi
         echo "EXE=$EXE" | tee -a $GITHUB_ENV
-        echo "name=exe::$(echo $EXE)" >> $GITHUB_OUTPUT
+        echo "exe=$EXE" >> $GITHUB_OUTPUT
 
         if [ -n "${{ github.event.number }}" ]; then
           RUN_BRANCH="PR-${{ github.event.number }}"
@@ -115,7 +115,7 @@ runs:
           RUN_BRANCH="${GITHUB_REF#refs/heads/}"
         fi
         echo "RUN_BRANCH=$RUN_BRANCH" | tee -a $GITHUB_ENV
-        echo "name=run_branch::$(echo $RUN_BRANCH)" >> $GITHUB_OUTPUT
+        echo "run_branch=$RUN_BRANCH" >> $GITHUB_OUTPUT
 
         # Auto-setup workspace + env vars
         if [[ "${{ inputs.workspace_auto_setup }}" == "true" ]]; then
@@ -134,10 +134,10 @@ runs:
         echo "WORKSPACE_BUILD_PATH=$WORKSPACE_BUILD_PATH" | tee -a $GITHUB_ENV
         echo "WORKSPACE_INSTALL_PATH=$WORKSPACE_INSTALL_PATH" | tee -a $GITHUB_ENV
         echo "WORKSPACE_ARTIFACT_PATH=$WORKSPACE_ARTIFACT_PATH" | tee -a $GITHUB_ENV
-        echo "name=workspace_src_path::$(echo $WORKSPACE_SRC_PATH)" >> $GITHUB_OUTPUT
-        echo "name=workspace_build_path::$(echo $WORKSPACE_BUILD_PATH)" >> $GITHUB_OUTPUT
-        echo "name=workspace_install_path::$(echo $WORKSPACE_INSTALL_PATH)" >> $GITHUB_OUTPUT
-        echo "name=workspace_artifact_path::$(echo $WORKSPACE_ARTIFACT_PATH)" >> $GITHUB_OUTPUT
+        echo "workspace_src_path=$WORKSPACE_SRC_PATH" >> $GITHUB_OUTPUT
+        echo "workspace_build_path=$WORKSPACE_BUILD_PATH" >> $GITHUB_OUTPUT
+        echo "workspace_install_path=$WORKSPACE_INSTALL_PATH" >> $GITHUB_OUTPUT
+        echo "workspace_artifact_path=$WORKSPACE_ARTIFACT_PATH" >> $GITHUB_OUTPUT
 
         # Set default settings for ccache
         echo "CCACHE_COMPRESS=true" | tee -a $GITHUB_ENV
@@ -177,8 +177,8 @@ runs:
         echo "VS_INSTALL_DIR=$VS_INSTALL_DIR" | tee -a $GITHUB_ENV
         echo "VS_VSDEVCMD=$VS_VSDEVCMD" | tee -a $GITHUB_ENV
 
-        echo "name=vs_install_dir::$(echo $VS_INSTALL_DIR)" >> $GITHUB_OUTPUT
-        echo "name=vs_vsdevcmd::$(echo $VS_VSDEVCMD)" >> $GITHUB_OUTPUT
+        echo "vs_install_dir=$VS_INSTALL_DIR" >> $GITHUB_OUTPUT
+        echo "vs_vsdevcmd=$VS_VSDEVCMD" >> $GITHUB_OUTPUT
 
     - name: Install build tools
       shell: bash
@@ -227,9 +227,9 @@ runs:
         echo "PYTHON_ROOT=$PYTHON_ROOT" | tee -a $GITHUB_ENV
         echo "Python_ROOT=$PYTHON_ROOT" | tee -a $GITHUB_ENV
         echo "PYTHON_EXE=$PYTHON_EXE" | tee -a $GITHUB_ENV
-        echo "name=python_root::$(echo $PYTHON_ROOT)" >> $GITHUB_OUTPUT
-        echo "name=python_version::${{ steps.install-python.outputs.python-version }}" >> $GITHUB_OUTPUT
-        echo "name=python_exe::$(echo $PYTHON_EXE)" >> $GITHUB_OUTPUT
+        echo "python_root=$PYTHON_ROOT" >> $GITHUB_OUTPUT
+        echo "python_version=${{ steps.install-python.outputs.python-version }}" >> $GITHUB_OUTPUT
+        echo "python_exe=$PYTHON_EXE" >> $GITHUB_OUTPUT
         echo "------- ls -la PYTHON_ROOT -------"
         ls -la "$PYTHON_ROOT"
         echo "----------------------------------"
@@ -486,7 +486,7 @@ runs:
         if [[ "$RUNNER_OS" == "Windows" ]]; then
           echo "$SOFA_ROOT/bin" >> $GITHUB_PATH
         fi
-        echo "name=sofa_root::$(echo $SOFA_ROOT)" >> $GITHUB_OUTPUT
+        echo "sofa_root=$SOFA_ROOT" >> $GITHUB_OUTPUT
 
     - name: Remove SofaPython3 from SOFA binaries
       if: inputs.sofa_with_sofapython3 != 'true'
