@@ -160,7 +160,7 @@ runs:
           SUDO=''
           QT_INSTALL_DIR="C:/Qt"
           EIGEN_INSTALL_DIR="C:/eigen"
-          BOOST_VERSION=1.69.0
+          BOOST_VERSION=1.74.0
           BOOST_INSTALL_DIR="C:/boost"
 
           # vsdevcmd.bat is here: 'C:/Program Files (x86)/Microsoft Visual Studio/2019/Enterprise/Common7/Tools/vsdevcmd.bat'
@@ -189,7 +189,7 @@ runs:
           sudo apt-get -qq install freeglut3-dev libopengl0
           sudo apt-get -qq install libpng-dev libjpeg-dev libtiff-dev libglew-dev zlib1g-dev
         elif [[ "$RUNNER_OS" == "macOS" ]]; then
-          brew update && brew upgrade
+          brew update
           brew install ccache ninja
           brew install glew
         elif [[ "$RUNNER_OS" == "Windows" ]]; then
@@ -260,14 +260,14 @@ runs:
         echo '---- pip show numpy scipy ----'
         $PYTHON_EXE -m pip show numpy scipy
         echo '------------------------------'
- 
+
     - name: Setup cache for pybind11 files
       uses: actions/cache@v2
       id: pybind11_cache
       with:
         path: ${{ env.PYBIND11_INSTALL_DIR }}
         key: pybind11-${{ inputs.pybind11_version }}_${{ runner.os }}_python-${{ inputs.python_version }}_${{ hashFiles('**/*.yml') }}
-    
+
     - name: Install pybind11 ${{ inputs.pybind11_version }}
       shell: bash
       run: |
@@ -278,7 +278,7 @@ runs:
         elif [ -e "$(command -v pybind11-config-${{ inputs.python_version }})" ]; then
           pybind11_DIR="$(pybind11-config-${{ inputs.python_version }} --cmakedir)"
         fi
-        
+
 
     - name: Setup cache for Qt files
       if: inputs.sofa_scope != 'minimal'
@@ -395,7 +395,7 @@ runs:
       run: |
         if ! ls -a "${{ inputs.sofa_root }}"/* >/dev/null 2>&1; then # cache check
           # directory does not exist or is empty
-          
+        
           if [ -n "${{ steps.get_sofa_from_github.outputs.id }}" ]; then
             # Release was found on GitHub
             SOFA_OS_GITHUB="$RUNNER_OS"
@@ -413,7 +413,7 @@ runs:
             unzip -qq "${{ runner.temp }}"/sofa_tmp/zip/sofa.zip -d "${{ runner.temp }}/sofa_tmp/binaries"
             $SUDO mkdir -p "${{ inputs.sofa_root }}"
             $SUDO mv "${{ runner.temp }}"/sofa_tmp/binaries/SOFA_*/* "${{ inputs.sofa_root }}"
-          
+        
           else
             # Release was not found on GitHub, try to get it from Jenkins
             SOFA_OS_JENKINS="$RUNNER_OS"
@@ -439,7 +439,7 @@ runs:
             $SUDO mkdir -p "${{ inputs.sofa_root }}"
             $SUDO mv "${{ runner.temp }}"/sofa_tmp/binaries/SOFA_*/* "${{ inputs.sofa_root }}"
           fi
-          
+        
         fi # cache check
 
     - name: Log SOFA install directory
