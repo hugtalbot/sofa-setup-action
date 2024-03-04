@@ -275,10 +275,12 @@ runs:
         pybind11_DIR="pybind11-dir-not-found"
         if [ -e "$(command -v pybind11-config)" ]; then
           pybind11_DIR="$(pybind11-config --cmakedir)"
+          echo "pybind11_DIR=$pybind11_DIR" | tee -a $GITHUB_ENV
         elif [ -e "$(command -v pybind11-config-${{ inputs.python_version }})" ]; then
           pybind11_DIR="$(pybind11-config-${{ inputs.python_version }} --cmakedir)"
+          echo "pybind11_DIR=$pybind11_DIR" | tee -a $GITHUB_ENV
         fi
-
+        
 
     - name: Setup cache for Qt files
       if: inputs.sofa_scope != 'minimal'
