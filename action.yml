@@ -38,7 +38,7 @@ inputs:
 outputs:
   sofa_version:
     description: "SOFA version"
-    value: ${{ inputs.sofa_version }}
+    value: ${{ steps.get-sofa-binaries.outputs.sofa_version }}
   sofa_root:
     description: "SOFA root directory"
     value: ${{ steps.set-sofa-root.outputs.sofa_root }}
@@ -113,6 +113,7 @@ runs:
           RUN_BRANCH="PR-${{ github.event.issue.number }}"
         else
           RUN_BRANCH="${GITHUB_REF#refs/heads/}"
+          RUN_BRANCH="${RUN_BRANCH#refs/tags/}"
         fi
         echo "RUN_BRANCH=$RUN_BRANCH" | tee -a $GITHUB_ENV
         echo "run_branch=$RUN_BRANCH" >> $GITHUB_OUTPUT
@@ -408,6 +409,7 @@ runs:
         repo: 'sofa-framework/sofa'
 
     - name: Download and install the latest SOFA ${{ inputs.sofa_version }} binaries
+      id: get-sofa-binaries
       shell: bash
       run: |
         if ! ls -a "${{ inputs.sofa_root }}"/* >/dev/null 2>&1; then # cache check
@@ -430,7 +432,9 @@ runs:
             unzip -qq "${{ runner.temp }}"/sofa_tmp/zip/sofa.zip -d "${{ runner.temp }}/sofa_tmp/binaries"
             $SUDO mkdir -p "${{ inputs.sofa_root }}"
             $SUDO mv "${{ runner.temp }}"/sofa_tmp/binaries/SOFA_*/* "${{ inputs.sofa_root }}"
-        
+            
+            echo "sofa_version=${{ steps.get_sofa_from_github.outputs.tag_name }}" >> $GITHUB_OUTPUT            
+            
           else
             # Release was not found on GitHub, try to get it from Jenkins
             SOFA_OS_JENKINS="$RUNNER_OS"
@@ -455,6 +459,9 @@ runs:
             unzip -qq "${{ runner.temp }}"/sofa_tmp/zip/${SOFA_OS_JENKINS}/SOFA_*.zip -d "${{ runner.temp }}/sofa_tmp/binaries"
             $SUDO mkdir -p "${{ inputs.sofa_root }}"
             $SUDO mv "${{ runner.temp }}"/sofa_tmp/binaries/SOFA_*/* "${{ inputs.sofa_root }}"
+        
+            echo "sofa_version=${{ inputs.sofa_version }}" >> $GITHUB_OUTPUT            
+
           fi
         
         fi # cache check
